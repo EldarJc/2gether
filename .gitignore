@@ -1,0 +1,30 @@
+# Virtual environments
+.venv/
+venv/
+
+# PyCharm
+.idea/
+(ako ga koristiš)
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Flask instance folder
+instance/
+
+# Environment variables
+.env
+.env.*
+
+# Compiled / build
+*.so
+*.log
+
+# PyInstaller
+*.spec
+
+# SQLite database files (ako ih koristiš)
+*.db
+*.sqlite3
