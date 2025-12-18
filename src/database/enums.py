@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class GroupRole(Enum):
     OWNER = "owner"
     ADMIN = "admin"
