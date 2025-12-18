@@ -25,6 +25,9 @@ instance/
 # PyInstaller
 *.spec
 
-# SQLite database files (ako ih koristiš)
+# SQLite database files
 *.db
 *.sqlite3
+
+
+migrations
