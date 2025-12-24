@@ -2,12 +2,11 @@ from flask import flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug import Response
 
-from ..utils import find_user
+from ..utils import find_user, update_password
 from . import auth_bp
 from .auth_utils import (
     create_user,
     send_reset_email,
-    update_password,
     verify_token,
 )
 from .forms import LoginForm, RegisterForm, ResetPassword, ResetPasswordRequest
@@ -17,7 +16,7 @@ from .forms import LoginForm, RegisterForm, ResetPassword, ResetPasswordRequest
 def login() -> Response | str:
     if current_user.is_anonymous:
         form = LoginForm()
-        if request.method == "POST" and form.validate_on_submit():
+        if form.validate_on_submit():
             user = find_user(form.email_username.data)
             login_user(user)
             return redirect("/home")

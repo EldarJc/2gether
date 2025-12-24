@@ -19,8 +19,8 @@ class LoginForm(FlaskForm):
 
     def validate(self, *args, **kwargs) -> bool:
         is_valid = super(LoginForm, self).validate(*args, **kwargs)
-
-        user = find_user(self.email_username.data)
+        data = self.email_username.data.strip()
+        user = find_user(data)
         if user is None or not user.check_password(self.password.data):
             self.form_errors.append("Invalid username/email or password.")
             is_valid = False
@@ -63,11 +63,12 @@ class RegisterForm(FlaskForm):
     submit = SubmitField("Sign Up")
 
     def validate_email(self, field: Field) -> None:
-        if find_user_by_email(field.data):
+        email = field.data.strip()
+        if find_user_by_email(email):
             raise ValidationError("This email address is not available")
 
     def validate_username(self, field: Field) -> None:
-        username = field.data
+        username = field.data.strip()
         if not re.match(r"^\w+$", username):
             raise ValidationError("Username cannot contain special characters.")
 

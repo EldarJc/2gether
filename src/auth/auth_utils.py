@@ -4,33 +4,28 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from src.extensions import mail
 
-from ..database import db
 from ..database.models import User
-from ..utils import find_user_by_email, get_user_by_id
+from ..utils import find_user_by_email, update_instance
 
 
 def create_user(
     username: str, first_name: str, last_name: str, email: str, password: str
-) -> User:
-    new_user = User(
-        username=username, first_name=first_name, last_name=last_name, email=email
-    )
-    new_user.password = password
-    db.session.add(new_user)
-    db.session.commit()
-    return new_user
+) -> User | None:
+    new_user = User()
 
+    if update_instance(
+        new_user,
+        {
+            "username": username.strip(),
+            "email": email.strip(),
+            "password": password,
+            "first_name": first_name.strip(),
+            "last_name": last_name.strip(),
+        },
+    ):
+        return new_user
 
-def update_password(user_id: int, new_password: str) -> bool:
-    try:
-        user = get_user_by_id(user_id)
-        user.password = new_password
-        db.session.commit()
-        return True
-
-    except Exception:
-        db.session.rollback()
-        return False
+    return None
 
 
 def request_token(user_id: int) -> str | None:
