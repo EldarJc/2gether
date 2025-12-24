@@ -44,6 +44,7 @@ def verify_token(token: str, expires_in: int = 600) -> int | None:
 
     except SignatureExpired:
         return None
+
     except BadSignature:
         return None
 
@@ -53,6 +54,7 @@ def send_reset_email(user_email: str) -> None:
     if user:
         token = request_token(user.id)
         msg = Message("Reset password instruction", recipients=[str(user.email)])
+
         msg.body = f"""
             Hello {user.username}
 
@@ -64,4 +66,5 @@ def send_reset_email(user_email: str) -> None:
 
             Your password won't change until you access the link above and create a new one.
         """
+
         mail.send(msg)

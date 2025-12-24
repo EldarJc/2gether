@@ -20,6 +20,7 @@ class LoginForm(FlaskForm):
     def validate(self, *args, **kwargs) -> bool:
         is_valid = super(LoginForm, self).validate(*args, **kwargs)
         data = self.email_username.data.strip()
+
         user = find_user(data)
         if user is None or not user.check_password(self.password.data):
             self.form_errors.append("Invalid username/email or password.")
@@ -78,6 +79,7 @@ class RegisterForm(FlaskForm):
     def validate(self, *args, **kwargs) -> bool:
         is_valid = super(RegisterForm, self).validate(*args, **kwargs)
         password, confirm_password = self.password.data, self.confirm_password.data
+
         if confirm_password != password:
             self.confirm_password.errors.append("Passwords do not match.")
             is_valid = False
@@ -108,6 +110,7 @@ class ResetPassword(FlaskForm):
     def validate(self, *args, **kwargs) -> bool:
         is_valid = super(ResetPassword, self).validate(*args, **kwargs)
         password, confirm_password = self.password.data, self.confirm_password.data
+
         if confirm_password != password:
             self.confirm_password.errors.append("Passwords do not match.")
             is_valid = False

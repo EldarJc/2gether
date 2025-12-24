@@ -1,4 +1,4 @@
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, redirect, render_template, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug import Response
 
@@ -18,8 +18,10 @@ def login() -> Response | str:
         form = LoginForm()
         if form.validate_on_submit():
             user = find_user(form.email_username.data)
+
             login_user(user)
             return redirect("/home")
+
         return render_template("auth/login.html", form=form)
 
     return redirect("/home")
@@ -37,6 +39,7 @@ def logout() -> Response:
 def register() -> Response | str:
     if current_user.is_anonymous:
         form = RegisterForm()
+
         if form.validate_on_submit():
             user = create_user(
                 username=form.username.data,
@@ -49,6 +52,7 @@ def register() -> Response | str:
             login_user(user)
             flash("Registration successful.", "success")
             return redirect("/home")
+
         return render_template("auth/register.html", form=form)
 
     return redirect("/home")
@@ -58,6 +62,7 @@ def register() -> Response | str:
 def reset_request() -> Response | str:
     if current_user.is_anonymous:
         form = ResetPasswordRequest()
+
         if form.validate_on_submit():
             send_reset_email(form.email.data)
             flash(
@@ -77,11 +82,12 @@ def password_reset(token: str) -> Response | str:
         form = ResetPassword()
 
         user_id = verify_token(token)
+
         if not user_id:
             flash("Invalid or expired token.", "error")
             return redirect(url_for("auth.reset_request"))
 
-        elif request.method == "POST" and form.validate_on_submit():
+        elif form.validate_on_submit():
             if update_password(user_id, form.password.data):
                 flash("Your password has been reset!", "success")
                 return redirect(url_for("auth.login"))
