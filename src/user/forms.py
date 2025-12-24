@@ -22,7 +22,9 @@ class UpdateProfileForm(FlaskForm):
     submit = SubmitField("Update Profile")
 
     def validate_username(self, field: Field) -> None:
-        if field.data != current_user.username and find_user_by_username(field.data):
+        username = field.data.strip()
+
+        if username != current_user.username and find_user_by_username(username):
             raise ValidationError("This username address is not available")
 
 
@@ -36,11 +38,14 @@ class CredentialsUpdateForm(FlaskForm):
     submit = SubmitField("Update Credentials")
 
     def validate_email(self, field: Field) -> None:
-        if field.data != current_user.email and find_user_by_email(field.data):
+        email = field.data.strip()
+
+        if email != current_user.email.strip() and find_user_by_email(email):
             raise ValidationError("This email address is not available")
 
     def validate_current_password(self, field: Field) -> None:
         password = field.data
+
         if password and not current_user.check_password(password):
             raise ValidationError("Incorrect password.")
 
