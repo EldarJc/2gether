@@ -19,7 +19,10 @@ def create_app(config: type) -> Flask:
     mail.init_app(app)
 
     from .auth import auth_bp
+    from .errors import error_bp
+    from .user import user_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
-
+    app.register_blueprint(user_bp, url_prefix="/u")
+    app.register_blueprint(error_bp)
     return app
