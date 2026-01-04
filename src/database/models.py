@@ -1,0 +1,273 @@
+from datetime import datetime, timedelta
+from typing import Optional
+
+from flask_login import UserMixin
+from sqlalchemy import (
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Table,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from src.extensions import login_manager
+
+from . import db
+from .base import BaseModel, utc_now
+from .enums import EventRole, EventType, GroupRole
+
+
+class User(UserMixin, BaseModel):
+    __tablename__ = "users"
+
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    first_name: Mapped[str] = mapped_column(String(40), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(40), nullable=False)
+    email: Mapped[str] = mapped_column(String(254), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    bio: Mapped[str] = mapped_column(String(350), default="No bio")
+
+    owned_groups: Mapped[list["Group"]] = relationship(
+        back_populates="owner", cascade="all, delete-orphan", lazy="selectin"
+    )
+    owned_events: Mapped[list["Event"]] = relationship(
+        back_populates="owner", cascade="all, delete-orphan", lazy="selectin"
+    )
+    joined_events: Mapped[list["EventAttendee"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    joined_groups: Mapped[list["GroupMember"]] = relationship(
+        back_populates="user",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+
+    @property
+    def password(self) -> None:
+        raise AttributeError("Password is write-only")
+
+    @password.setter
+    def password(self, password: str) -> None:
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password: str) -> bool:
+        return check_password_hash(self.password_hash, password)
+
+    @property
+    def is_active(self) -> bool:
+        return not self.is_deleted
+
+
+@login_manager.user_loader
+def user_loader(user_id: str) -> User | None:
+    return User.query.filter_by(id=int(user_id)).first()
+
+
+group_tags = Table(
+    "group_tags",
+    db.metadata,
+    Column(
+        "group_id",
+        Integer,
+        ForeignKey(
+            "groups.id",
+            ondelete="CASCADE",
+        ),
+        primary_key=True,
+    ),
+    Column(
+        "tag_id",
+        Integer,
+        ForeignKey(
+            "tags.id",
+            ondelete="CASCADE",
+        ),
+        primary_key=True,
+    ),
+)
+
+
+class Group(BaseModel):
+    __tablename__ = "groups"
+
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    description: Mapped[str] = mapped_column(String(500), default="No description")
+
+    owner_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+
+    owner: Mapped["User"] = relationship(back_populates="owned_groups")
+    tags: Mapped[list["Tag"]] = relationship(
+        secondary=group_tags,
+        back_populates="groups",
+        lazy="selectin",
+    )
+    members: Mapped[list["GroupMember"]] = relationship(
+        back_populates="group",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+    events: Mapped[list["Event"]] = relationship(
+        back_populates="group",
+        cascade="all, delete",
+    )
+
+    @property
+    def members_count(self) -> int:
+        return len(self.members)
+
+    def is_owner(self, user_id: int) -> bool:
+        return self.owner_id == user_id
+
+
+class GroupMember(BaseModel):
+    __tablename__ = "group_members"
+
+    role: Mapped[GroupRole] = mapped_column(
+        Enum(GroupRole), default=GroupRole.MEMBER, nullable=False
+    )
+
+    group_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+
+    group: Mapped["Group"] = relationship(back_populates="members")
+    user: Mapped["User"] = relationship(back_populates="joined_groups")
+
+    __table_args__ = (UniqueConstraint("group_id", "user_id", name="uq_group_user"),)
+
+
+class Location(BaseModel):
+    __tablename__ = "event_locations"
+
+    address: Mapped[str] = mapped_column(String(255), nullable=False)
+    city: Mapped[str] = mapped_column(String(100), nullable=False)
+    state: Mapped[str] = mapped_column(String(100), nullable=False)
+    country: Mapped[str] = mapped_column(String(100), nullable=False)
+    latitude: Mapped[float] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float] = mapped_column(Float, nullable=True)
+
+    event_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("events.id", ondelete="CASCADE"), unique=True
+    )
+
+    event: Mapped["Event"] = relationship(back_populates="location")
+
+
+event_tags = Table(
+    "event_tags",
+    db.metadata,
+    Column(
+        "event_id",
+        Integer,
+        ForeignKey(
+            "events.id",
+            ondelete="CASCADE",
+        ),
+        primary_key=True,
+    ),
+    Column(
+        "tag_id", Integer, ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True
+    ),
+)
+
+
+class Event(BaseModel):
+    __tablename__ = "events"
+
+    title: Mapped[str] = mapped_column(String(150), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="No description")
+    start_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    end_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    event_type: Mapped[EventType] = mapped_column(Enum(EventType), nullable=False)
+    max_attendees: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    owner_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    group_id: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        ForeignKey("groups.id", ondelete="CASCADE", name="fk_event_group"),
+    )
+
+    owner: Mapped["User"] = relationship(back_populates="owned_events")
+    group: Mapped[Optional["Group"]] = relationship(back_populates="events")
+    attendees: Mapped[list["EventAttendee"]] = relationship(
+        back_populates="event",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+    location: Mapped[Optional["Location"]] = relationship(
+        back_populates="event",
+        cascade="all, delete",
+        uselist=False,
+    )
+    tags: Mapped[list["Tag"]] = relationship(
+        secondary=event_tags,
+        back_populates="events",
+        lazy="selectin",
+    )
+
+    @property
+    def attendee_count(self) -> int:
+        return len(self.attendees)
+
+    @property
+    def duration(self) -> timedelta:
+        return self.end_date - self.start_date
+
+    @property
+    def is_finished(self) -> bool:
+        return utc_now() >= self.end_date
+
+
+class EventAttendee(BaseModel):
+    __tablename__ = "event_attendees"
+
+    role: Mapped[EventRole] = mapped_column(
+        Enum(EventRole), default=EventRole.PARTICIPANT, nullable=False
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    event_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False
+    )
+
+    user: Mapped["User"] = relationship(back_populates="joined_events")
+    event: Mapped["Event"] = relationship(back_populates="attendees")
+
+    __table_args__ = (UniqueConstraint("user_id", "event_id", name="uq_user_event"),)
+
+
+class Tag(BaseModel):
+    __tablename__ = "tags"
+
+    name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+
+    events: Mapped[list["Event"]] = relationship(
+        secondary=event_tags,
+        back_populates="tags",
+        lazy="selectin",
+        passive_deletes=True,
+    )
+    groups: Mapped[list["Group"]] = relationship(
+        secondary=group_tags,
+        back_populates="tags",
+        lazy="selectin",
+        passive_deletes=True,
+    )
