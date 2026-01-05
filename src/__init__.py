@@ -4,6 +4,7 @@ from flask import Flask
 
 from config import LOGGING
 
+from .database import db, migrate
 from .extensions import login_manager, mail
 
 
@@ -18,5 +19,8 @@ def create_app(config_name=None) -> Flask:
 
     mail.init_app(app)
     login_manager.init_app(app)
+
+    db.init_app(app)
+    migrate.init_app(app, db)
 
     return app
