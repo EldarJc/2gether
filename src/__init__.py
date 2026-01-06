@@ -9,7 +9,7 @@ from .extensions import login_manager, mail
 
 
 def create_app(config_name=None) -> Flask:
-    app = Flask(__name__)
+    app = Flask(__name__, template_folder="ui/templates")
     if config_name is None:
         raise ValueError("config_name must be provided")
 
@@ -22,5 +22,9 @@ def create_app(config_name=None) -> Flask:
 
     db.init_app(app)
     migrate.init_app(app, db)
+
+    from .auth import auth_bp
+
+    app.register_blueprint(auth_bp, url_prefix="/auth")
 
     return app
