@@ -3,7 +3,7 @@ name = "2getherapp"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "EldarJc",email = "jusiceldar87@gmail.com"}
+    { name = "EldarJc", email = "jusiceldar87@gmail.com" }
 ]
 readme = "README.md"
 requires-python = ">=3.12"
@@ -27,3 +27,6 @@ dev = [
     "python-dotenv (>=1.2.1,<2.0.0)",
     "pytest (>=9.0.2,<10.0.0)"
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
